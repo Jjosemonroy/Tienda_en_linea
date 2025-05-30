@@ -5,12 +5,14 @@ from .database import Base, engine
 from . import models
 from .routers import usuarios
 from.routers import productos
+from.routers import carrito
 
 
 app = FastAPI()
 
 app.include_router(usuarios.router)
 app.include_router(productos.router)
+app.include_router(carrito.router)
 
 # Crear tablas solo si no existen (no afecta las existentes)
 @app.on_event("startup")
