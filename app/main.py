@@ -7,9 +7,18 @@ from .routers import usuarios
 from.routers import productos
 from.routers import carrito
 from.routers import ventas
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # tu frontend
+    allow_credentials=True,
+    allow_methods=["*"],                      # permite GET, POST, PUT, DELETE, OPTIONS, etc.
+    allow_headers=["*"],                      # permite headers como Authorization, Content-Type, etc.
+)
 
 app.include_router(usuarios.router)
 app.include_router(productos.router)

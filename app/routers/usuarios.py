@@ -5,6 +5,16 @@ from typing import Optional
 from .. import database, models
 from ..auth import crear_token, verificar_token
 from fastapi import Header
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    correo: str
+    contraseña: str
+
+class LoginRequest(BaseModel):
+    correo: str
+    contraseña: str
+
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -49,10 +59,10 @@ def registrar_usuario(nombre: str, correo: str, contraseña: str, db: Session = 
 
 # Login de usuario con generación de token
 @router.post("/login")
-def login(correo: str, contraseña: str, db: Session = Depends(get_db)):
-    usuario = db.query(models.Usuario).filter(models.Usuario.correo == correo).first()
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    usuario = db.query(models.Usuario).filter(models.Usuario.correo == request.correo).first()
 
-    if not usuario or not bcrypt.verify(contraseña, usuario.contraseña):
+    if not usuario or not bcrypt.verify(request.contraseña, usuario.contraseña):
         raise HTTPException(status_code=401, detail="Credenciales inválidas.")
 
     if usuario.estado != 'activo':
