@@ -1,10 +1,10 @@
-# app/routers/usuarios.py
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt
+from typing import Optional
 from .. import database, models
-from fastapi import Path
+from ..auth import crear_token, verificar_token
+from fastapi import Header
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -15,6 +15,19 @@ def get_db():
     finally:
         db.close()
 
+# Dependencia para extraer el usuario desde el token
+def obtener_usuario_actual(authorization: str = Header(...)):
+    esquema, _, token = authorization.partition(" ")
+    if esquema.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Formato de autorización inválido")
+
+    payload = verificar_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
+    return payload
+
+# Registro de usuario
 @router.post("/registrar")
 def registrar_usuario(nombre: str, correo: str, contraseña: str, db: Session = Depends(get_db)):
     usuario_existente = db.query(models.Usuario).filter(models.Usuario.correo == correo).first()
@@ -26,13 +39,15 @@ def registrar_usuario(nombre: str, correo: str, contraseña: str, db: Session = 
         nombre=nombre,
         correo=correo,
         contraseña=contraseña_hash,
-        rol="cliente"
+        rol="cliente",
+        estado="activo"
     )
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
     return {"mensaje": "Usuario registrado exitosamente."}
 
+# Login de usuario con generación de token
 @router.post("/login")
 def login(correo: str, contraseña: str, db: Session = Depends(get_db)):
     usuario = db.query(models.Usuario).filter(models.Usuario.correo == correo).first()
@@ -43,14 +58,34 @@ def login(correo: str, contraseña: str, db: Session = Depends(get_db)):
     if usuario.estado != 'activo':
         raise HTTPException(status_code=403, detail="Usuario inactivo. Contacte a un administrador.")
 
-    return {"mensaje": f"Bienvenido {usuario.nombre}", "rol": usuario.rol}
+    token = crear_token({"sub": usuario.correo, "id": usuario.id, "rol": usuario.rol})
 
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "usuario": {
+            "id": usuario.id,
+            "nombre": usuario.nombre,
+            "rol": usuario.rol
+        }
+    }
 
+# Obtener listado de usuarios (solo admin)
+@router.get("/")
+def listar_usuarios(admin_id: int, db: Session = Depends(get_db)):
+    admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
+    if not admin:
+        raise HTTPException(status_code=403, detail="Solo los administradores pueden ver la lista de usuarios.")
+
+    usuarios = db.query(models.Usuario).all()
+    return usuarios
+
+# Cambiar rol (cliente ↔ admin)
 @router.put("/cambiar-rol/{usuario_id}")
 def cambiar_rol(
     admin_id: int,
     nuevo_rol: str,
-    usuario_id: int = Path(..., description="ID del usuario a modificar"),
+    usuario_id: int = Path(...),
     db: Session = Depends(get_db)
 ):
     if nuevo_rol not in ["cliente", "admin"]:
@@ -71,19 +106,11 @@ def cambiar_rol(
     db.commit()
     return {"mensaje": f"El rol del usuario con ID {usuario.id} ahora es '{nuevo_rol}'"}
 
-@router.get("/")
-def listar_usuarios(admin_id: int, db: Session = Depends(get_db)):
-    admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
-    if not admin:
-        raise HTTPException(status_code=403, detail="Solo los administradores pueden ver la lista de usuarios.")
-
-    usuarios = db.query(models.Usuario).all()
-    return usuarios
-
+# Cambiar estado (activo/inactivo)
 @router.put("/cambiar-estado/{usuario_id}")
 def cambiar_estado(
     admin_id: int,
-    nuevo_estado: str,  # 'activo' o 'inactivo'
+    nuevo_estado: str,
     usuario_id: int,
     db: Session = Depends(get_db)
 ):
@@ -101,6 +128,3 @@ def cambiar_estado(
     usuario.estado = nuevo_estado
     db.commit()
     return {"mensaje": f"El usuario ahora está '{nuevo_estado}'"}
-
-
-
