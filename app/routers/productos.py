@@ -1,6 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from .. import database, models
+import os
+import shutil
+from uuid import uuid4
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -14,28 +17,45 @@ def get_db():
 # Crear producto (solo admin)
 @router.post("/")
 def crear_producto(
-    admin_id: int,
-    nombre: str,
-    descripcion: str,
-    precio: float,
-    stock: int,
-    imagen: str,
+    admin_id: int = Form(...),
+    nombre: str = Form(...),
+    descripcion: str = Form(...),
+    precio: float = Form(...),
+    stock: int = Form(...),
+    imagen: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
+    # Validar si es administrador
+    admin = db.query(models.Usuario).filter(
+        models.Usuario.id == admin_id,
+        models.Usuario.rol == "admin"
+    ).first()
+
     if not admin:
         raise HTTPException(status_code=403, detail="No tiene permisos para crear productos.")
 
+    # Guardar imagen en carpeta local
+    extension = os.path.splitext(imagen.filename)[1]
+    filename = f"{uuid4().hex}{extension}"
+    ruta_carpeta = "static/imagenes"
+    os.makedirs(ruta_carpeta, exist_ok=True)
+    ruta_imagen = os.path.join(ruta_carpeta, filename)
+
+    with open(ruta_imagen, "wb") as buffer:
+        shutil.copyfileobj(imagen.file, buffer)
+
+    # Registrar producto
     nuevo_producto = models.Producto(
         nombre=nombre,
         descripcion=descripcion,
         precio=precio,
         stock=stock,
-        imagen=imagen
+        imagen=f"/{ruta_imagen.replace(os.sep, '/')}"  # Ruta que será accesible vía http://localhost:8000/static/imagenes/...
     )
     db.add(nuevo_producto)
     db.commit()
     db.refresh(nuevo_producto)
+
     return {"mensaje": "Producto creado exitosamente", "producto": nuevo_producto.id}
 
 # Listar productos (disponible para todos)
