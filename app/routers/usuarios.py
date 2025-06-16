@@ -5,6 +5,25 @@ from typing import Optional
 from .. import database, models
 from ..auth import crear_token, verificar_token
 from fastapi import Header
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    correo: str
+    contraseña: str
+
+class LoginRequest(BaseModel):
+    correo: str
+    contraseña: str
+
+class ChangePasswordRequest(BaseModel):
+    correo: str
+    contraseña_actual: str
+    nueva_contraseña: str
+
+class RestablecerContraseñaRequest(BaseModel):
+    admin_id: int
+    correo: str
+    nueva_contraseña: str
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -49,10 +68,10 @@ def registrar_usuario(nombre: str, correo: str, contraseña: str, db: Session = 
 
 # Login de usuario con generación de token
 @router.post("/login")
-def login(correo: str, contraseña: str, db: Session = Depends(get_db)):
-    usuario = db.query(models.Usuario).filter(models.Usuario.correo == correo).first()
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    usuario = db.query(models.Usuario).filter(models.Usuario.correo == request.correo).first()
 
-    if not usuario or not bcrypt.verify(contraseña, usuario.contraseña):
+    if not usuario or not bcrypt.verify(request.contraseña, usuario.contraseña):
         raise HTTPException(status_code=401, detail="Credenciales inválidas.")
 
     if usuario.estado != 'activo':
@@ -128,3 +147,40 @@ def cambiar_estado(
     usuario.estado = nuevo_estado
     db.commit()
     return {"mensaje": f"El usuario ahora está '{nuevo_estado}'"}
+
+@router.put("/cambiar-contraseña")
+def cambiar_contraseña(
+    datos: ChangePasswordRequest,
+    db: Session = Depends(get_db)
+):
+    usuario = db.query(models.Usuario).filter(models.Usuario.correo == datos.correo).first()
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if not bcrypt.verify(datos.contraseña_actual, usuario.contraseña):
+        raise HTTPException(status_code=401, detail="Contraseña actual incorrecta")
+
+    usuario.contraseña = bcrypt.hash(datos.nueva_contraseña)
+    db.commit()
+
+    return {"mensaje": "Contraseña actualizada correctamente"}
+
+@router.put("/restablecer-contraseña")
+def restablecer_contraseña(
+    datos: RestablecerContraseñaRequest,
+    db: Session = Depends(get_db)
+):
+    admin = db.query(models.Usuario).filter(models.Usuario.id == datos.admin_id).first()
+    if not admin or admin.rol !="admin":
+        raise HTTPException(status_code=403, detail="No tiene permisos para restablecer contraseñas.")
+    
+    usuario = db.query(models.Usuario).filter(models.Usuario.correo == datos.correo).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    usuario.contraseña = bcrypt.hash(datos.nueva_contraseña)
+    db.commit()
+
+    return {"mensaje": f"Contraseña restablecida para {usuario.nombre}"}
+
