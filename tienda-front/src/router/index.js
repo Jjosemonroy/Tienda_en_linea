@@ -1,17 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../components/Login.vue'
+import Registro from '../components/Registro.vue'
 import Productos from '../views/Productos.vue'
 import Admin from '../views/Admin.vue'
 import AdminCrearProducto from '../views/AdminCrearProducto.vue'
+import Perfil from '../views/Perfil.vue'
 
 const routes = [
   { path: '/', component: Login },
-  { path: '/productos', component: Productos },
-  { path: '/admin', component: Admin },
+  { path: '/registro', component: Registro },
+  { path: '/perfil', component: Perfil, meta: { requiresAuth: true } },
+  { path: '/productos', component: Productos, meta: { requiresAuth: true } },
+  { path: '/admin', component: Admin, meta: { requiresAuth: true, requiresAdmin: true } },
   {
     path: '/admin/crear-producto',
     component: AdminCrearProducto,
-    meta: { requiresAdmin: true }
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/no-autorizado',
@@ -28,16 +32,19 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const usuario = JSON.parse(localStorage.getItem('usuario'))
+  const token = localStorage.getItem('token')
 
-  if (to.meta.requiresAdmin) {
-    if (usuario?.rol === 'admin') {
-      next()
-    } else {
-      next('/no-autorizado')
+  if (to.meta.requiresAuth) {
+    if (!usuario || !token) {
+      next('/')
+      return
     }
-  } else {
-    next()
+    if (to.meta.requiresAdmin && usuario.rol !== 'admin') {
+      next('/no-autorizado')
+      return
+    }
   }
+  next()
 })
 
 export default router

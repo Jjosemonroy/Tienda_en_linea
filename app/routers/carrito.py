@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from .. import database, models
 from datetime import datetime
 from pydantic import BaseModel, conint
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/carrito", tags=["Carrito"])
 
@@ -23,7 +24,7 @@ class CarritoItemRequest(BaseModel):
 
 # 1. Agregar producto al carrito
 @router.post("/agregar")
-def agregar_al_carrito(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db)):
+def agregar_al_carrito(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
     producto = db.query(models.Producto).filter(models.Producto.id == request.producto_id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
@@ -44,7 +45,7 @@ def agregar_al_carrito(request: CarritoItemRequest = Body(...), db: Session = De
 
 # 2. Ver contenido del carrito por usuario
 @router.get("/{usuario_id}")
-def ver_carrito(usuario_id: int, db: Session = Depends(get_db)):
+def ver_carrito(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     items = (
         db.query(
             models.Carrito.id,
@@ -81,7 +82,7 @@ def ver_carrito(usuario_id: int, db: Session = Depends(get_db)):
 
 # 3. Eliminar un producto específico del carrito
 @router.delete("/eliminar")
-def eliminar_item(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db)):
+def eliminar_item(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
     item = db.query(models.Carrito).filter(
         models.Carrito.usuario_id == request.usuario_id,
         models.Carrito.producto_id == request.producto_id
@@ -96,7 +97,7 @@ def eliminar_item(request: CarritoItemRequest = Body(...), db: Session = Depends
 
 # 4. Vaciar todo el carrito del usuario
 @router.delete("/vaciar/{usuario_id}")
-def vaciar_carrito(usuario_id: int, db: Session = Depends(get_db)):
+def vaciar_carrito(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     db.query(models.Carrito).filter(models.Carrito.usuario_id == usuario_id).delete()
     db.commit()
     return {"mensaje": "Carrito vaciado"}
@@ -105,7 +106,7 @@ def vaciar_carrito(usuario_id: int, db: Session = Depends(get_db)):
 from datetime import datetime
 
 @router.post("/finalizar/{usuario_id}")
-def finalizar_compra(usuario_id: int, db: Session = Depends(get_db)):
+def finalizar_compra(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     # Obtener contenido del carrito
     items = (
         db.query(

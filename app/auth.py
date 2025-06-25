@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 import os
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException, Header
 
 load_dotenv()
 
@@ -25,3 +26,13 @@ def verificar_token(token: str):
         return payload
     except JWTError:
         return None
+
+# Dependencia para proteger endpoints
+async def get_current_user(authorization: str = Header(...)):
+    esquema, _, token = authorization.partition(" ")
+    if esquema.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="Token de autenticación inválido o ausente")
+    payload = verificar_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    return payload

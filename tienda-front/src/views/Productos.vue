@@ -19,10 +19,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const productos = ref([])
+const usuario = ref(null)
 
 onMounted(async () => {
+  usuario.value = JSON.parse(localStorage.getItem('usuario'))
   try {
     const response = await axios.get('http://localhost:8000/productos/')
     productos.value = response.data
@@ -30,6 +34,12 @@ onMounted(async () => {
     console.error('Error al obtener productos:', error)
   }
 })
+
+function cerrarSesion() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('usuario')
+  router.push('/')
+}
 </script>
 
 <style scoped>
@@ -59,5 +69,20 @@ onMounted(async () => {
   object-fit: cover;
   margin-bottom: 10px;
   border-radius: 8px;
+}
+
+button {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.perfil-link {
+  color: #4caf50;
+  text-decoration: underline;
+  margin-right: 8px;
 }
 </style>

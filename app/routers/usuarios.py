@@ -94,7 +94,9 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "usuario": {
             "id": usuario.id,
             "nombre": usuario.nombre,
-            "rol": usuario.rol
+            "correo": usuario.correo,
+            "rol": usuario.rol,
+            "estado": usuario.estado
         }
     }
 

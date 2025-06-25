@@ -8,6 +8,7 @@
     </form>
     <p v-if="error" class="error">{{ error }}</p>
   </div>
+  <router-link to="/registro">¿No tienes cuenta? Regístrate aquí</router-link>
 </template>
 
 <script setup>
@@ -25,6 +26,16 @@ const limpiarFormulario = () => {
   contraseña.value = ''
 }
 
+function traducirError(msg) {
+  if (!msg) return 'Error de validación.'
+  if (msg.includes('at least 8 characters')) return 'La contraseña debe tener al menos 8 caracteres.'
+  if (msg.includes('value is not a valid email address')) return 'El correo electrónico no es válido.'
+  if (msg.includes('field required')) return 'Todos los campos son obligatorios.'
+  if (msg.includes('at most 100 characters')) return 'El nombre debe tener como máximo 100 caracteres.'
+  if (msg.includes('at least 2 characters')) return 'El nombre debe tener al menos 2 caracteres.'
+  return msg // Por defecto, mostrar el mensaje original
+}
+
 const login = async () => {
   error.value = ''
   try {
@@ -36,13 +47,9 @@ const login = async () => {
     const token = res.data.access_token
     const usuario = res.data.usuario
 
-    alert(`Bienvenido ${usuario.nombre} (${usuario.rol})`)
-
     // Guardar token y datos del usuario
     localStorage.setItem('token', token)
     localStorage.setItem('usuario', JSON.stringify(usuario))
-
-    alert(`Bienvenido ${usuario.nombre} (${usuario.rol})`)
 
     limpiarFormulario()
 
@@ -53,14 +60,17 @@ const login = async () => {
       router.push('/productos')
     }
   } catch (err) {
-    if (err.response?.status === 401) {
-      error.value = 'Tu cuenta esta inactiva. Contacta al administrador.'
+    const data = err.response?.data
+    // Si es error de validación de Pydantic, mostrar mensaje genérico
+    if (Array.isArray(data?.detail)) {
+      error.value = 'Correo o contraseña incorrectos.'
+    } else if (typeof data?.detail === 'string') {
+      error.value = traducirError(data.detail)
     } else if (err.response?.status === 401) {
-      error.value = 'Credenciales incorrectas. Intenta nuevamente.'
+      error.value = 'Tu cuenta esta inactiva. Contacta al administrador.'
     } else {
-      error.value = err.response?.data?.detail || 'Error de conexión con el servidor.'
+      error.value = 'Error de conexión con el servidor.'
     }
-
     limpiarFormulario()
   }
 }

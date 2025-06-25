@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
 from .. import database, models
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/ventas", tags=["Ventas"])
 
@@ -20,7 +21,8 @@ def historial_ventas(
     admin_id: int,
     usuario_id: Optional[int] = None,
     fecha: Optional[date] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
 ):
     # Validar que quien consulta sea admin
     admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
@@ -71,7 +73,7 @@ def historial_ventas(
     return historial
 
 @router.get("/cliente/{usuario_id}")
-def historial_cliente(usuario_id: int, db: Session = Depends(get_db)):
+def historial_cliente(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     ventas = db.query(models.Venta).filter(models.Venta.usuario_id == usuario_id).all()
 
     historial = []

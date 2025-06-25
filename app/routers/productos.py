@@ -5,6 +5,7 @@ import os
 import shutil
 from uuid import uuid4
 from pydantic import BaseModel, constr, condecimal, conint
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -35,7 +36,8 @@ def crear_producto(
     precio: float = Form(...),
     stock: int = Form(...),
     imagen: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
 ):
     # Validar si es administrador
     admin = db.query(models.Usuario).filter(
@@ -108,7 +110,8 @@ def actualizar_producto(
     precio: float,
     stock: int,
     imagen: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
 ):
     admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
     if not admin:
@@ -140,7 +143,7 @@ def actualizar_producto(
 
 # Eliminar producto (solo admin)
 @router.delete("/{producto_id}")
-def eliminar_producto(producto_id: int, admin_id: int, db: Session = Depends(get_db)):
+def eliminar_producto(producto_id: int, admin_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
     if not admin:
         raise HTTPException(status_code=403, detail="No tiene permisos para eliminar productos.")
