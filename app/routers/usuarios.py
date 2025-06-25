@@ -1,29 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Body
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt
 from typing import Optional
 from .. import database, models
 from ..auth import crear_token, verificar_token
 from fastapi import Header
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, constr
+
+class RegistroUsuarioRequest(BaseModel):
+    nombre: constr(strip_whitespace=True, min_length=2, max_length=100)
+    correo: EmailStr
+    contraseña: constr(min_length=8, max_length=64)
 
 class LoginRequest(BaseModel):
-    correo: str
-    contraseña: str
-
-class LoginRequest(BaseModel):
-    correo: str
-    contraseña: str
+    correo: EmailStr
+    contraseña: constr(min_length=8, max_length=64)
 
 class ChangePasswordRequest(BaseModel):
-    correo: str
-    contraseña_actual: str
-    nueva_contraseña: str
+    correo: EmailStr
+    contraseña_actual: constr(min_length=8, max_length=64)
+    nueva_contraseña: constr(min_length=8, max_length=64)
 
 class RestablecerContraseñaRequest(BaseModel):
     admin_id: int
-    correo: str
-    nueva_contraseña: str
+    correo: EmailStr
+    nueva_contraseña: constr(min_length=8, max_length=64)
+
+class CambiarRolRequest(BaseModel):
+    admin_id: int
+    nuevo_rol: constr(strip_whitespace=True)
+
+class CambiarEstadoRequest(BaseModel):
+    admin_id: int
+    nuevo_estado: constr(strip_whitespace=True)
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -46,17 +55,17 @@ def obtener_usuario_actual(authorization: str = Header(...)):
 
     return payload
 
-# Registro de usuario
+# Registro de usuario con validación robusta
 @router.post("/registrar")
-def registrar_usuario(nombre: str, correo: str, contraseña: str, db: Session = Depends(get_db)):
-    usuario_existente = db.query(models.Usuario).filter(models.Usuario.correo == correo).first()
+def registrar_usuario(request: RegistroUsuarioRequest, db: Session = Depends(get_db)):
+    usuario_existente = db.query(models.Usuario).filter(models.Usuario.correo == request.correo).first()
     if usuario_existente:
         raise HTTPException(status_code=400, detail="El correo ya está registrado.")
 
-    contraseña_hash = bcrypt.hash(contraseña)
+    contraseña_hash = bcrypt.hash(request.contraseña)
     nuevo_usuario = models.Usuario(
-        nombre=nombre,
-        correo=correo,
+        nombre=request.nombre,
+        correo=request.correo,
         contraseña=contraseña_hash,
         rol="cliente",
         estado="activo"
@@ -102,15 +111,14 @@ def listar_usuarios(admin_id: int, db: Session = Depends(get_db)):
 # Cambiar rol (cliente ↔ admin)
 @router.put("/cambiar-rol/{usuario_id}")
 def cambiar_rol(
-    admin_id: int,
-    nuevo_rol: str,
     usuario_id: int = Path(...),
+    datos: CambiarRolRequest = Body(...),
     db: Session = Depends(get_db)
 ):
-    if nuevo_rol not in ["cliente", "admin"]:
+    if datos.nuevo_rol not in ["cliente", "admin"]:
         raise HTTPException(status_code=400, detail="Rol inválido. Usa 'cliente' o 'admin'.")
 
-    admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
+    admin = db.query(models.Usuario).filter(models.Usuario.id == datos.admin_id, models.Usuario.rol == "admin").first()
     if not admin:
         raise HTTPException(status_code=403, detail="No tiene permisos para cambiar roles.")
 
@@ -118,25 +126,24 @@ def cambiar_rol(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    if usuario.rol == nuevo_rol:
-        return {"mensaje": f"El usuario ya tiene el rol '{nuevo_rol}'."}
+    if usuario.rol == datos.nuevo_rol:
+        return {"mensaje": f"El usuario ya tiene el rol '{datos.nuevo_rol}'."}
 
-    usuario.rol = nuevo_rol
+    usuario.rol = datos.nuevo_rol
     db.commit()
-    return {"mensaje": f"El rol del usuario con ID {usuario.id} ahora es '{nuevo_rol}'"}
+    return {"mensaje": f"El rol del usuario con ID {usuario.id} ahora es '{datos.nuevo_rol}'"}
 
 # Cambiar estado (activo/inactivo)
 @router.put("/cambiar-estado/{usuario_id}")
 def cambiar_estado(
-    admin_id: int,
-    nuevo_estado: str,
     usuario_id: int,
+    datos: CambiarEstadoRequest = Body(...),
     db: Session = Depends(get_db)
 ):
-    if nuevo_estado not in ["activo", "inactivo"]:
+    if datos.nuevo_estado not in ["activo", "inactivo"]:
         raise HTTPException(status_code=400, detail="Estado inválido. Usa 'activo' o 'inactivo'.")
 
-    admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
+    admin = db.query(models.Usuario).filter(models.Usuario.id == datos.admin_id, models.Usuario.rol == "admin").first()
     if not admin:
         raise HTTPException(status_code=403, detail="No tiene permisos para cambiar estado.")
 
@@ -144,9 +151,9 @@ def cambiar_estado(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    usuario.estado = nuevo_estado
+    usuario.estado = datos.nuevo_estado
     db.commit()
-    return {"mensaje": f"El usuario ahora está '{nuevo_estado}'"}
+    return {"mensaje": f"El usuario ahora está '{datos.nuevo_estado}'"}
 
 @router.put("/cambiar-contraseña")
 def cambiar_contraseña(

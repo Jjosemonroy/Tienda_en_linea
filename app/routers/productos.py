@@ -4,6 +4,7 @@ from .. import database, models
 import os
 import shutil
 from uuid import uuid4
+from pydantic import BaseModel, constr, condecimal, conint
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -13,6 +14,17 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Modelo para validación de producto (sin imagen)
+class ProductoBase(BaseModel):
+    nombre: constr(strip_whitespace=True, min_length=2, max_length=100)
+    descripcion: constr(strip_whitespace=True, min_length=5, max_length=500)
+    precio: condecimal(gt=0, max_digits=10, decimal_places=2)
+    stock: conint(ge=0)
+
+# Modelo para actualización (puede incluir imagen como string)
+class ProductoUpdate(ProductoBase):
+    imagen: str
 
 # Crear producto (solo admin)
 @router.post("/")
@@ -34,8 +46,22 @@ def crear_producto(
     if not admin:
         raise HTTPException(status_code=403, detail="No tiene permisos para crear productos.")
 
-    # Guardar imagen en carpeta local
-    extension = os.path.splitext(imagen.filename)[1]
+    # Validar datos con Pydantic
+    try:
+        ProductoBase(
+            nombre=nombre,
+            descripcion=descripcion,
+            precio=precio,
+            stock=stock
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    # Validar extensión de imagen
+    extension = os.path.splitext(imagen.filename)[1].lower()
+    if extension not in [".jpg", ".jpeg", ".png", ".webp"]:
+        raise HTTPException(status_code=400, detail="Formato de imagen no permitido. Usa jpg, jpeg, png o webp.")
+
     filename = f"{uuid4().hex}{extension}"
     ruta_carpeta = "static/imagenes"
     os.makedirs(ruta_carpeta, exist_ok=True)
@@ -87,6 +113,18 @@ def actualizar_producto(
     admin = db.query(models.Usuario).filter(models.Usuario.id == admin_id, models.Usuario.rol == "admin").first()
     if not admin:
         raise HTTPException(status_code=403, detail="No tiene permisos para actualizar productos.")
+
+    # Validar datos con Pydantic
+    try:
+        ProductoUpdate(
+            nombre=nombre,
+            descripcion=descripcion,
+            precio=precio,
+            stock=stock,
+            imagen=imagen
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
     if not producto:

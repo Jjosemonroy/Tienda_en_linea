@@ -2,11 +2,15 @@
 
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Clave secreta para firmar los tokens (¡no compartir!)
-SECRET_KEY = "clave_supersecreta_que_debes_cambiar"
-ALGORITHM = "HS256"
-EXPIRACION_MINUTOS = 60
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "clave_supersecreta_que_debes_cambiar")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+EXPIRACION_MINUTOS = int(os.getenv("JWT_EXPIRATION_MINUTES", 60))
 
 def crear_token(data: dict):
     to_encode = data.copy()
