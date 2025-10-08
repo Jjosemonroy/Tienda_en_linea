@@ -5,6 +5,7 @@ import Productos from '../views/Productos.vue'
 import Admin from '../views/Admin.vue'
 import AdminCrearProducto from '../views/AdminCrearProducto.vue'
 import Perfil from '../views/Perfil.vue'
+import Carrito from '../views/Carrito.vue'
 
 const routes = [
   { path: '/', component: Login },
@@ -17,12 +18,7 @@ const routes = [
     component: AdminCrearProducto,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
-  {
-    path: '/no-autorizado',
-    component: {
-      template: '<div style="padding:40px; color:white;"><h2>No autorizado</h2><p>No tienes permisos para acceder a esta página.</p></div>'
-    }
-  }
+  { path: '/carrito', name: 'Carrito', component: Carrito }
 ]
 
 const router = createRouter({
@@ -31,20 +27,66 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const usuario = JSON.parse(localStorage.getItem('usuario'))
-  const token = localStorage.getItem('token')
+  try {
+    const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
+    const token = localStorage.getItem('token')
 
-  if (to.meta.requiresAuth) {
-    if (!usuario || !token) {
-      next('/')
+    // Verificar que el token no esté expirado
+    if (token) {
+      try {
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]))
+        const currentTime = Math.floor(Date.now() / 1000)
+        
+        if (tokenPayload.exp && tokenPayload.exp < currentTime) {
+          // Token expirado, limpiar y redirigir al login
+          localStorage.removeItem('usuario')
+          localStorage.removeItem('token')
+          if (to.path !== '/') {
+            next('/')
+            return
+          }
+        }
+      } catch (tokenError) {
+        // Token inválido, limpiar y redirigir al login
+        localStorage.removeItem('usuario')
+        localStorage.removeItem('token')
+        if (to.path !== '/') {
+          next('/')
+          return
+        }
+      }
+    }
+
+    if (to.meta.requiresAuth) {
+      if (!usuario || !token) {
+        next('/')
+        return
+      }
+      if (to.meta.requiresAdmin && usuario.rol !== 'admin') {
+        // Redirigir a productos si no es admin
+        next('/productos')
+        return
+      }
+    }
+    
+    // Si ya está logueado y va al login, redirigir según su rol
+    if (to.path === '/' && usuario && token) {
+      if (usuario.rol === 'admin') {
+        next('/admin')
+      } else {
+        next('/productos')
+      }
       return
     }
-    if (to.meta.requiresAdmin && usuario.rol !== 'admin') {
-      next('/no-autorizado')
-      return
-    }
+    
+    next()
+  } catch (error) {
+    console.error('Error en navegación:', error)
+    // En caso de error, limpiar y ir al login
+    localStorage.removeItem('usuario')
+    localStorage.removeItem('token')
+    next('/')
   }
-  next()
 })
 
 export default router

@@ -2,11 +2,11 @@
 
 from fastapi import FastAPI, Request
 from .database import Base, engine
-from . import models
 from .routers import usuarios
 from .routers import productos
 from .routers import carrito
 from .routers import ventas
+from .routers import categorias
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -27,7 +27,18 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
+    allow_origins=[
+        os.getenv("FRONTEND_URL", "http://localhost:5173"),
+        "http://192.168.1.3:5173",
+        "http://192.168.1.3:3000",
+        "http://192.168.1.3:8080",
+        "http://192.168.1.3:8000",
+        "http://0.0.0.0:5173",
+        "http://0.0.0.0:3000",
+        "http://0.0.0.0:8080",
+        "http://0.0.0.0:8000",
+        "*"  # Permitir todos los orígenes en desarrollo
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +48,7 @@ app.include_router(usuarios.router)
 app.include_router(productos.router)
 app.include_router(carrito.router)
 app.include_router(ventas.router)
+app.include_router(categorias.router)
 
 @app.on_event("startup")
 def startup():

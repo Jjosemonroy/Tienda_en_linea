@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Body
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt
 from typing import Optional
-from .. import database, models
-from ..auth import crear_token, verificar_token
+from app import database, models
+from app.auth import crear_token, verificar_token
 from fastapi import Header
 from pydantic import BaseModel, EmailStr, constr
 
@@ -33,6 +33,10 @@ class CambiarRolRequest(BaseModel):
 class CambiarEstadoRequest(BaseModel):
     admin_id: int
     nuevo_estado: constr(strip_whitespace=True)
+
+class ActualizarUsuarioRequest(BaseModel):
+    nombre: Optional[constr(strip_whitespace=True, min_length=2, max_length=100)] = None
+    correo: Optional[EmailStr] = None
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -192,4 +196,87 @@ def restablecer_contraseña(
     db.commit()
 
     return {"mensaje": f"Contraseña restablecida para {usuario.nombre}"}
+
+# Restablecer contraseña por ID de usuario (para admin)
+@router.put("/restablecer-contraseña/{usuario_id}")
+def restablecer_contraseña_por_id(
+    usuario_id: int,
+    datos: dict,
+    db: Session = Depends(get_db)
+):
+    # Validar que el admin existe y tiene permisos
+    admin = db.query(models.Usuario).filter(models.Usuario.id == datos.get("admin_id"), models.Usuario.rol == "admin").first()
+    if not admin:
+        raise HTTPException(status_code=403, detail="No tiene permisos para restablecer contraseñas.")
+    
+    # Buscar el usuario por ID
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Validar la nueva contraseña
+    nueva_contraseña = datos.get("nueva_contraseña")
+    if not nueva_contraseña or len(nueva_contraseña) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
+    
+    # Hashear y guardar la nueva contraseña
+    usuario.contraseña = bcrypt.hash(nueva_contraseña)
+    db.commit()
+
+    return {"mensaje": f"Contraseña restablecida exitosamente para {usuario.nombre}"}
+
+# Actualizar datos de usuario (para que el usuario pueda modificar sus propios datos)
+@router.put("/actualizar")
+def actualizar_usuario(
+    datos: ActualizarUsuarioRequest = Body(...),
+    authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    # Obtener usuario actual desde el token
+    usuario_actual = obtener_usuario_actual(authorization)
+    if not usuario_actual:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    
+    # Buscar el usuario en la base de datos
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_actual["id"]).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Validar que el usuario esté activo
+    if usuario.estado != 'activo':
+        raise HTTPException(status_code=403, detail="Usuario inactivo")
+    
+    # Actualizar nombre si se proporciona
+    if datos.nombre is not None:
+        usuario.nombre = datos.nombre
+    
+    # Actualizar correo si se proporciona (con validación de unicidad)
+    if datos.correo is not None:
+        # Verificar que el correo no esté en uso por otro usuario
+        usuario_existente = db.query(models.Usuario).filter(
+            models.Usuario.correo == datos.correo,
+            models.Usuario.id != usuario.id
+        ).first()
+        if usuario_existente:
+            raise HTTPException(status_code=400, detail="El correo ya está registrado por otro usuario")
+        usuario.correo = datos.correo
+    
+    try:
+        db.commit()
+        db.refresh(usuario)
+        
+        # Retornar datos actualizados
+        return {
+            "mensaje": "Datos actualizados exitosamente",
+            "usuario": {
+                "id": usuario.id,
+                "nombre": usuario.nombre,
+                "correo": usuario.correo,
+                "rol": usuario.rol,
+                "estado": usuario.estado
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al actualizar los datos")
 
