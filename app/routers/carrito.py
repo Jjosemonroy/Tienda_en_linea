@@ -1,9 +1,11 @@
 # app/routers/carrito.py
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from sqlalchemy.orm import Session
-from .. import database, models
+from app import database, models
 from datetime import datetime
+from pydantic import BaseModel, conint
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/carrito", tags=["Carrito"])
 
@@ -14,25 +16,28 @@ def get_db():
     finally:
         db.close()
 
+# Modelo para agregar/eliminar producto del carrito
+class CarritoItemRequest(BaseModel):
+    usuario_id: conint(gt=0)
+    producto_id: conint(gt=0)
+    cantidad: conint(gt=0) = 1
+
 # 1. Agregar producto al carrito
 @router.post("/agregar")
-def agregar_al_carrito(usuario_id: int, producto_id: int, cantidad: int, db: Session = Depends(get_db)):
-    producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
+def agregar_al_carrito(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
+    producto = db.query(models.Producto).filter(models.Producto.id == request.producto_id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    if cantidad <= 0:
-        raise HTTPException(status_code=400, detail="Cantidad inválida")
-
     existente = db.query(models.Carrito).filter(
-        models.Carrito.usuario_id == usuario_id,
-        models.Carrito.producto_id == producto_id
+        models.Carrito.usuario_id == request.usuario_id,
+        models.Carrito.producto_id == request.producto_id
     ).first()
 
     if existente:
-        existente.cantidad += cantidad
+        existente.cantidad += request.cantidad
     else:
-        nuevo_item = models.Carrito(usuario_id=usuario_id, producto_id=producto_id, cantidad=cantidad)
+        nuevo_item = models.Carrito(usuario_id=request.usuario_id, producto_id=request.producto_id, cantidad=request.cantidad)
         db.add(nuevo_item)
 
     db.commit()
@@ -40,12 +45,14 @@ def agregar_al_carrito(usuario_id: int, producto_id: int, cantidad: int, db: Ses
 
 # 2. Ver contenido del carrito por usuario
 @router.get("/{usuario_id}")
-def ver_carrito(usuario_id: int, db: Session = Depends(get_db)):
+def ver_carrito(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     items = (
         db.query(
             models.Carrito.id,
+            models.Carrito.producto_id,
             models.Producto.nombre.label("producto"),
             models.Producto.precio,
+            models.Producto.imagen,
             models.Carrito.cantidad,
             (models.Producto.precio * models.Carrito.cantidad).label("total_linea")
         )
@@ -61,8 +68,10 @@ def ver_carrito(usuario_id: int, db: Session = Depends(get_db)):
         total_linea = float(item.total_linea)
         resultado.append({
             "id": item.id,
+            "producto_id": item.producto_id,
             "producto": item.producto,
             "precio": float(item.precio),
+            "imagen": item.imagen,
             "cantidad": item.cantidad,
             "total_linea": item.total_linea
         })
@@ -76,11 +85,11 @@ def ver_carrito(usuario_id: int, db: Session = Depends(get_db)):
 
 
 # 3. Eliminar un producto específico del carrito
-@router.delete("/eliminar")
-def eliminar_item(usuario_id: int, producto_id: int, db: Session = Depends(get_db)):
+@router.post("/eliminar")
+def eliminar_item(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
     item = db.query(models.Carrito).filter(
-        models.Carrito.usuario_id == usuario_id,
-        models.Carrito.producto_id == producto_id
+        models.Carrito.usuario_id == request.usuario_id,
+        models.Carrito.producto_id == request.producto_id
     ).first()
 
     if not item:
@@ -90,9 +99,29 @@ def eliminar_item(usuario_id: int, producto_id: int, db: Session = Depends(get_d
     db.commit()
     return {"mensaje": "Producto eliminado del carrito"}
 
-# 4. Vaciar todo el carrito del usuario
+# 4. Actualizar cantidad de un producto en el carrito
+@router.post("/actualizar")
+def actualizar_cantidad(request: CarritoItemRequest = Body(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
+    item = db.query(models.Carrito).filter(
+        models.Carrito.usuario_id == request.usuario_id,
+        models.Carrito.producto_id == request.producto_id
+    ).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="El producto no está en el carrito")
+
+    item.cantidad = request.cantidad
+    if item.cantidad <= 0:
+        db.delete(item)
+    else:
+        db.merge(item)
+    
+    db.commit()
+    return {"mensaje": "Cantidad actualizada en el carrito"}
+
+# 5. Vaciar todo el carrito del usuario
 @router.delete("/vaciar/{usuario_id}")
-def vaciar_carrito(usuario_id: int, db: Session = Depends(get_db)):
+def vaciar_carrito(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     db.query(models.Carrito).filter(models.Carrito.usuario_id == usuario_id).delete()
     db.commit()
     return {"mensaje": "Carrito vaciado"}
@@ -101,7 +130,7 @@ def vaciar_carrito(usuario_id: int, db: Session = Depends(get_db)):
 from datetime import datetime
 
 @router.post("/finalizar/{usuario_id}")
-def finalizar_compra(usuario_id: int, db: Session = Depends(get_db)):
+def finalizar_compra(usuario_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     # Obtener contenido del carrito
     items = (
         db.query(

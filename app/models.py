@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, DECIMAL, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, DECIMAL, TIMESTAMP, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -12,6 +12,18 @@ class Usuario(Base):
     rol = Column(Enum('cliente', 'admin'), default='cliente')
     estado = Column(Enum('activo', 'inactivo'), default='activo')
 
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), unique=True, index=True)
+    descripcion = Column(Text)
+    activo = Column(Boolean, default=True)
+    fecha_creacion = Column(TIMESTAMP)
+
+    # Relación con productos
+    productos = relationship("Producto", back_populates="categoria")
+
 class Producto(Base):
     __tablename__ = "productos"
 
@@ -21,6 +33,10 @@ class Producto(Base):
     precio = Column(DECIMAL(10, 2))
     stock = Column(Integer)
     imagen = Column(String(255))
+    categoria_id = Column(Integer, ForeignKey("categorias.id"))
+
+    # Relación con categoría
+    categoria = relationship("Categoria", back_populates="productos")
 
 class Carrito(Base):
     __tablename__ = "carrito"
