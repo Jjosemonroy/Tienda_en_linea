@@ -153,13 +153,22 @@ const login = async () => {
     localStorage.setItem('usuario', JSON.stringify(usuario))
 
     limpiarFormulario()
+    
+    // Disparar un evento para actualizar el sidebar inmediatamente
+    window.dispatchEvent(new Event('login-success'))
 
-    // Redireccionar según el rol
-    if (usuario.rol === 'admin') {
-      router.push('/admin')
-    } else {
-      router.push('/productos')
-    }
+    // Forzar actualización del DOM
+    document.body.style.display = 'none'
+    setTimeout(() => {
+      document.body.style.display = ''
+      
+      // Redireccionar según el rol
+      if (usuario.rol === 'admin') {
+        router.push('/admin')
+      } else {
+        router.push('/productos')
+      }
+    }, 10)
   } catch (err) {
     const data = err.response?.data
     if (Array.isArray(data?.detail)) {

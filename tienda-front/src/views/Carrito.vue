@@ -220,10 +220,40 @@ async function eliminarItem(item) {
     })
     
     await cargarCarrito()
+    
+    // Actualizar el contador del carrito en la barra lateral
+    actualizarContadorCarrito()
+    
     toast.success('Producto eliminado del carrito')
   } catch (error) {
     console.error('Error al eliminar item:', error)
     toast.error('Error al eliminar el producto')
+  }
+}
+
+// Función para actualizar el contador del carrito
+async function actualizarContadorCarrito() {
+  if (!usuario.value) return
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`${getApiUrl('cart')}/${usuario.value.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    if (response.status === 200) {
+      // Calcular el número de items en el carrito
+      const carritoData = response.data
+      const carritoCount = carritoData.items ? carritoData.items.length : 0
+      
+      // Disparar un evento personalizado para que el Sidebar lo detecte
+      const carritoEvent = new CustomEvent('carritoActualizado', { 
+        detail: { count: carritoCount } 
+      })
+      window.dispatchEvent(carritoEvent)
+    }
+  } catch (error) {
+    console.error('Error al actualizar contador del carrito:', error)
   }
 }
 
@@ -249,6 +279,9 @@ async function finalizarCompra() {
     
     toast.success('¡Compra realizada con éxito!')
     await cargarCarrito()
+    
+    // Actualizar el contador del carrito después de finalizar la compra
+    actualizarContadorCarrito()
   } catch (error) {
     console.error('Error al finalizar compra:', error)
     toast.error('Error al procesar la compra')
@@ -656,4 +689,4 @@ async function finalizarCompra() {
     justify-content: center;
   }
 }
-</style> 
+</style>
