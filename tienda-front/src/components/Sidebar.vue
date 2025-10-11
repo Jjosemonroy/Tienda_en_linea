@@ -1,7 +1,6 @@
 <template>
   <transition name="sidebar-fade" mode="out-in">
     <v-navigation-drawer
-      v-if="usuario"
       v-model="drawer"
       :rail="isCollapsed"
       :permanent="false"
@@ -15,8 +14,8 @@
       <!-- Header del sidebar -->
       <v-list-item
         prepend-avatar=""
-        :title="!isCollapsed ? (usuario?.nombre || 'Usuario') : ''"
-        :subtitle="!isCollapsed ? (usuario?.rol || 'Cliente') : ''"
+        :title="!isCollapsed ? (usuario?.nombre || '') : ''"
+        :subtitle="!isCollapsed ? (usuario?.rol || '') : ''"
         class="sidebar-header"
       >
         <template v-slot:prepend>
@@ -26,7 +25,7 @@
             class="user-avatar"
           >
             <span class="text-h6 font-weight-bold text-white">
-              {{ usuario ? usuario.nombre.charAt(0).toUpperCase() : 'U' }}
+              {{ usuario ? usuario.nombre.charAt(0).toUpperCase() : '' }}
             </span>
           </v-avatar>
         </template>
@@ -35,7 +34,7 @@
       <v-divider></v-divider>
 
       <!-- Navegación -->
-      <v-list density="compact" nav class="sidebar-nav">
+      <v-list density="compact" nav class="sidebar-nav" v-if="usuario">
         <v-list-item
           prepend-icon="mdi-view-dashboard"
           title="Dashboard"
@@ -197,8 +196,16 @@ onMounted(() => {
   checkUser()
   emit('sidebarStateChange', isCollapsed.value)
   
+  // Escuchar el evento de inicio de sesión exitoso
+  window.addEventListener('login-success', checkUser)
+  
   // Verificar cuando cambia el localStorage (para sincronización entre pestañas)
   window.addEventListener('storage', checkUser)
+  
+  // Escuchar el evento personalizado para actualizar el contador del carrito
+  window.addEventListener('carritoActualizado', (event) => {
+    carritoCount.value = event.detail.count
+  })
 })
 
 // Watcher para el usuario
@@ -220,6 +227,8 @@ onUnmounted(() => {
     clearTimeout(collapseTimeout)
   }
   window.removeEventListener('storage', checkUser)
+  window.removeEventListener('login-success', checkUser)
+  window.removeEventListener('carritoActualizado', null)
 })
 
 async function cargarCarrito() {
@@ -331,4 +340,4 @@ function cerrarSesion() {
   transform: translateX(-100%);
   opacity: 0;
 }
-</style> 
+</style>

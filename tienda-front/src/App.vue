@@ -10,7 +10,7 @@
     </div>
     
     <Sidebar 
-      v-if="hasUser && isInitialized" 
+      v-if="isInitialized" 
       @sidebarStateChange="handleSidebarStateChange" 
       @logout="handleLogout" 
     />

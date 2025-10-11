@@ -285,7 +285,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, inject } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -395,9 +395,39 @@ async function agregarAlCarrito(producto) {
       headers: { Authorization: `Bearer ${token}` }
     })
     
+    // Actualizar el contador del carrito inmediatamente
+    actualizarContadorCarrito()
+    
     toast.success(`${producto.nombre} agregado al carrito`)
   } catch (error) {
     console.error('Error al agregar al carrito:', error)
+    toast.error('Error al agregar al carrito')
+  }
+}
+
+// Función para actualizar el contador del carrito
+async function actualizarContadorCarrito() {
+  if (!usuario.value) return
+  
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`${getApiUrl('cart')}/${usuario.value.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    if (response.status === 200) {
+      // Actualizar el contador en localStorage para que otros componentes lo detecten
+      const carritoData = response.data
+      const carritoCount = carritoData.items ? carritoData.items.length : 0
+      
+      // Disparar un evento personalizado para que el Sidebar lo detecte
+      const carritoEvent = new CustomEvent('carritoActualizado', { 
+        detail: { count: carritoCount } 
+      })
+      window.dispatchEvent(carritoEvent)
+    }
+  } catch (error) {
+    console.error('Error al actualizar contador del carrito:', error)
     toast.error('Error al agregar al carrito')
   }
 }
