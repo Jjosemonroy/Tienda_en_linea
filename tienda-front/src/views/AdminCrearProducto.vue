@@ -136,7 +136,12 @@ onMounted(async () => {
 
 async function cargarCategorias() {
   try {
-    const response = await axios.get('http://localhost:8000/categorias')
+    const token = localStorage.getItem('token')
+    const response = await axios.get('http://localhost:8000/categorias', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
     categorias.value = response.data
   } catch (error) {
     console.error('Error al cargar categorías:', error)
@@ -163,7 +168,9 @@ const crearProducto = async () => {
   
   try {
     const usuario = JSON.parse(localStorage.getItem('usuario'))
-    if (!usuario) {
+    const token = localStorage.getItem('token')
+    
+    if (!usuario || !token) {
       router.push('/login')
       return
     }
@@ -183,7 +190,8 @@ const crearProducto = async () => {
 
     const res = await axios.post('http://localhost:8000/productos/', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
       }
     })
 
@@ -219,33 +227,39 @@ const limpiarFormulario = () => {
 
 <style scoped>
 .crear-producto-container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   padding: var(--spacing-xl);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
 }
 
 .crear-producto-card {
-  background: var(--bg-primary);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: #ffffff;
+  border-radius: var(--border-radius-xl);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   padding: var(--spacing-2xl);
+  border: 1px solid #e2e8f0;
 }
 
 .card-header {
   text-align: center;
   margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 2px solid var(--border-color-light);
 }
 
 .card-title {
   font-size: var(--font-size-3xl);
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1e293b;
   margin-bottom: var(--spacing-sm);
 }
 
 .card-subtitle {
-  color: var(--text-secondary);
-  font-size: var(--font-size-base);
+  color: #64748b;
+  font-size: var(--font-size-lg);
+  font-weight: 400;
 }
 
 .product-form {
@@ -271,31 +285,45 @@ const limpiarFormulario = () => {
 }
 
 .form-label {
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: 600;
+  color: #1e293b;
   font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .form-input,
 .form-textarea {
-  padding: var(--spacing-md);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
-  background: var(--bg-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 2px solid #e2e8f0;
+  border-radius: var(--border-radius-lg);
+  background: #ffffff;
   font-size: var(--font-size-base);
-  transition: all var(--transition-fast);
+  transition: all var(--transition-normal);
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: #64748b;
+  font-weight: 400;
 }
 
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: #ffffff;
+  transform: translateY(-1px);
 }
 
 .form-textarea {
   resize: vertical;
-  min-height: 100px;
+  min-height: 120px;
+  font-family: inherit;
 }
 
 .file-upload {
@@ -310,75 +338,184 @@ const limpiarFormulario = () => {
   height: 100%;
   opacity: 0;
   cursor: pointer;
+  z-index: 2;
 }
 
 .file-preview {
-  border: 2px dashed var(--border-color);
-  border-radius: var(--border-radius);
-  padding: var(--spacing-xl);
+  border: 3px dashed #e2e8f0;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-2xl);
   text-align: center;
-  transition: all var(--transition-fast);
-  min-height: 200px;
+  transition: all var(--transition-normal);
+  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #f8fafc;
+  position: relative;
+  overflow: hidden;
+}
+
+.file-preview::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(102, 126, 234, 0.05) 50%, transparent 70%);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
 }
 
 .file-preview:hover {
-  border-color: var(--primary-color);
-  background: var(--bg-secondary);
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.1);
+}
+
+.file-preview:hover::before {
+  opacity: 1;
 }
 
 .file-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-md);
-  color: var(--text-muted);
+  gap: var(--spacing-lg);
+  color: #64748b;
+  font-weight: 500;
 }
 
 .upload-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--text-muted);
+  width: 64px;
+  height: 64px;
+  color: #667eea;
+  opacity: 0.7;
+  transition: all var(--transition-normal);
+}
+
+.file-preview:hover .upload-icon {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 .preview-image {
   max-width: 100%;
   max-height: 300px;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-lg);
   object-fit: cover;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 .mensaje {
-  padding: var(--spacing-md);
-  border-radius: var(--border-radius);
-  font-weight: 500;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  font-weight: 600;
+  text-align: center;
+  margin: var(--spacing-lg) 0;
 }
 
 .mensaje.success {
-  background: rgb(16 185 129 / 0.1);
-  color: var(--success-color);
-  border: 1px solid rgb(16 185 129 / 0.2);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+  color: #059669;
+  border: 2px solid rgba(16, 185, 129, 0.2);
 }
 
 .mensaje.error {
-  background: rgb(239 68 68 / 0.1);
-  color: var(--error-color);
-  border: 1px solid rgb(239 68 68 / 0.2);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  color: #dc2626;
+  border: 2px solid rgba(239, 68, 68, 0.2);
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-md);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
+  gap: var(--spacing-lg);
+  padding-top: var(--spacing-xl);
+  border-top: 2px solid var(--border-color-light);
+  margin-top: var(--spacing-lg);
+}
+
+/* Estilos de botones mejorados */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border: none;
+  border-radius: var(--border-radius-lg);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  min-width: 140px;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left var(--transition-smooth);
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+}
+
+.btn-primary:active {
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  background: #cbd5e0;
+  color: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.btn-outline:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-outline:active {
+  transform: translateY(0);
 }
 
 .loading-spinner {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top: 2px solid white;
   border-radius: 50%;
@@ -390,26 +527,74 @@ const limpiarFormulario = () => {
   100% { transform: rotate(360deg); }
 }
 
+/* Efectos de focus para accesibilidad */
+.btn:focus,
+.form-input:focus,
+.form-textarea:focus,
+.file-preview:focus-within {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .crear-producto-container {
     padding: var(--spacing-md);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   }
   
   .crear-producto-card {
     padding: var(--spacing-lg);
+    margin: var(--spacing-sm);
   }
   
   .form-grid {
     grid-template-columns: 1fr;
+    gap: var(--spacing-md);
   }
   
   .form-actions {
     flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .card-title {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .file-preview {
+    min-height: 180px;
+    padding: var(--spacing-lg);
+  }
+  
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .crear-producto-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .crear-producto-card {
+    padding: var(--spacing-md);
+    margin: 0;
   }
   
   .card-title {
     font-size: var(--font-size-xl);
+  }
+  
+  .form-input,
+  .form-textarea {
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 }
 </style>

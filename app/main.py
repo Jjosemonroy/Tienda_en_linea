@@ -7,6 +7,7 @@ from .routers import productos
 from .routers import carrito
 from .routers import ventas
 from .routers import categorias
+from .routers import pagos
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -49,6 +50,7 @@ app.include_router(productos.router)
 app.include_router(carrito.router)
 app.include_router(ventas.router)
 app.include_router(categorias.router)
+app.include_router(pagos.router)
 
 @app.on_event("startup")
 def startup():
