@@ -43,7 +43,15 @@ const API_CONFIG = {
     
     // Ventas
     sales: '/ventas',
-    createSale: '/ventas/crear'
+    createSale: '/ventas/crear',
+   
+    // Pagos
+    paymentMethods: '/pagos/metodos-pago',
+    shippingAddresses: '/pagos/direcciones',
+    createShippingAddress: '/pagos/direcciones',
+    processPayment: '/pagos/procesar',
+    paymentHistory: '/pagos/historial',
+    purchaseHistory: '/pagos/historial-completo',
   }
 }
 

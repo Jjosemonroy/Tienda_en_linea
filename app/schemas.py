@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 from decimal import Decimal
 from datetime import datetime
 
@@ -109,3 +109,82 @@ class DetalleVentaResponse(DetalleVentaBase):
 
     class Config:
         from_attributes = True 
+
+class MetodoPagoBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    tipo: str = 'tarjeta'
+    activo: bool = True
+
+class MetodoPagoCreate(MetodoPagoBase):
+    pass
+
+class MetodoPagoResponse(MetodoPagoBase):
+    id: int
+    fecha_creacion: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# Schemas para Estados de Transacción
+class EstadoTransaccionBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+
+class EstadoTransaccionCreate(EstadoTransaccionBase):
+    pass
+
+class EstadoTransaccionResponse(EstadoTransaccionBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Schemas para Transacciones
+class TransaccionBase(BaseModel):
+    venta_id: int
+    metodo_pago_id: int
+    estado_id: int
+    referencia: str
+    monto: Decimal
+    datos_pago: Optional[Dict[str, Any]] = None
+    
+
+class TransaccionCreate(TransaccionBase):
+    pass
+
+class TransaccionResponse(TransaccionBase):
+    id: int
+    fecha_creacion: Optional[datetime] = None
+    fecha_actualizacion: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# Schemas para Direcciones de Envío
+class DireccionEnvioBase(BaseModel):
+    alias: Optional[str] = None
+    nombre_completo: str
+    direccion: str
+    ciudad: str
+    codigo_postal: str
+    telefono: str
+    es_principal: bool = False
+    
+
+class DireccionEnvioCreate(DireccionEnvioBase):
+    pass
+
+class DireccionEnvioResponse(DireccionEnvioBase):
+    id: int
+    usuario_id: int
+    fecha_creacion: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+        
+class ProcesoPagoRequest(BaseModel):
+    venta_id: int
+    metodo_pago_id: int
+    datos_pago: Dict[str, Any]
+    direccion_envio_id: Optional[int] = None

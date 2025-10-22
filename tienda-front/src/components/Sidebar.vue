@@ -81,6 +81,15 @@
         ></v-list-item>
 
         <v-list-item
+          prepend-icon="mdi-history"
+          title="Historial de Compras"
+          to="/historial-compras"
+          value="historial-compras"
+          class="nav-item"
+          rounded="lg"
+        ></v-list-item>
+
+        <v-list-item
           v-if="usuario && usuario.rol === 'admin'"
           prepend-icon="mdi-plus-circle"
           title="Crear Producto"

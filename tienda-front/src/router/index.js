@@ -6,6 +6,8 @@ import Admin from '../views/Admin.vue'
 import AdminCrearProducto from '../views/AdminCrearProducto.vue'
 import Perfil from '../views/Perfil.vue'
 import Carrito from '../views/Carrito.vue'
+import ProcesoPago from '../views/ProcesoPago.vue'
+import HistorialCompras from '../views/HistorialCompras.vue'
 
 const routes = [
   { path: '/', component: Login },
@@ -18,7 +20,10 @@ const routes = [
     component: AdminCrearProducto,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
-  { path: '/carrito', name: 'Carrito', component: Carrito }
+  { path: '/carrito', name: 'Carrito', component: Carrito },
+  { path: '/proceso-pago', name: 'ProcesoPago', component: ProcesoPago, meta: { requiresAuth: true } },
+  { path: '/historial-compras', name: 'HistorialCompras', component: HistorialCompras, meta: { requiresAuth: true } }
+
 ]
 
 const router = createRouter({

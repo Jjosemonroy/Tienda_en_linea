@@ -125,7 +125,7 @@
                 <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H5a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                 </svg>
-                Finalizar compra
+                Procesar pago
               </button>
               
               <router-link to="/productos" class="btn btn-outline btn-lg continue-shopping">
@@ -263,29 +263,7 @@ async function finalizarCompra() {
     return
   }
 
-  try {
-    const token = localStorage.getItem('token')
-    await axios.post(getApiUrl('createSale'), {
-      usuario_id: usuario.value.id,
-      productos: carrito.value.items.map(item => ({
-        producto_id: item.producto_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio
-      })),
-      total: carrito.value.total_carrito
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
-    toast.success('¡Compra realizada con éxito!')
-    await cargarCarrito()
-    
-    // Actualizar el contador del carrito después de finalizar la compra
-    actualizarContadorCarrito()
-  } catch (error) {
-    console.error('Error al finalizar compra:', error)
-    toast.error('Error al procesar la compra')
-  }
+  router.push('/proceso-pago')
 }
 </script>
 
@@ -301,9 +279,10 @@ async function finalizarCompra() {
   align-items: center;
   margin-bottom: var(--spacing-2xl);
   padding: var(--spacing-xl);
-  background: var(--bg-primary);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  color: white;
 }
 
 .header-content {
@@ -313,12 +292,13 @@ async function finalizarCompra() {
 .page-title {
   font-size: var(--font-size-3xl);
   font-weight: 700;
-  color: var(--text-primary);
+  color: white;
   margin-bottom: var(--spacing-xs);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .page-subtitle {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.9);
   font-size: var(--font-size-base);
 }
 
@@ -327,16 +307,20 @@ async function finalizarCompra() {
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-xs);
+  background: rgba(255, 255, 255, 0.2);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  backdrop-filter: blur(10px);
 }
 
 .cart-count {
   font-size: var(--font-size-2xl);
   font-weight: 700;
-  color: var(--primary-color);
+  color: white;
 }
 
 .cart-label {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.8);
   font-size: var(--font-size-sm);
 }
 
@@ -356,8 +340,8 @@ async function finalizarCompra() {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid var(--border-color);
-  border-top: 4px solid var(--primary-color);
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #667eea;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto var(--spacing-lg);
@@ -391,22 +375,73 @@ async function finalizarCompra() {
   margin-bottom: var(--spacing-xl);
 }
 
+/* Botones mejorados */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: var(--font-size-base);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.btn-outline {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.btn-outline:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-lg {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .items-section {
-  background: var(--bg-primary);
+  background: white;
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  border: 1px solid #e2e8f0;
 }
 
 .section-header {
   padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
 .section-header h2 {
   margin: 0;
-  color: var(--text-primary);
+  color: #2d3748;
+  font-weight: 600;
 }
 
 .items-list {
@@ -417,16 +452,18 @@ async function finalizarCompra() {
   display: flex;
   gap: var(--spacing-lg);
   padding: var(--spacing-lg);
-  border: 1px solid var(--border-color);
+  border: 1px solid #e2e8f0;
   border-radius: var(--border-radius-lg);
   margin-bottom: var(--spacing-lg);
-  background: var(--bg-primary);
-  transition: all var(--transition-normal);
+  background: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .cart-item:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+  border-color: #667eea;
 }
 
 .cart-item:last-child {
@@ -439,6 +476,7 @@ async function finalizarCompra() {
   height: 120px;
   border-radius: var(--border-radius);
   overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .product-image {
@@ -461,12 +499,12 @@ async function finalizarCompra() {
 .item-name {
   font-size: var(--font-size-lg);
   font-weight: 600;
-  color: var(--text-primary);
+  color: #2d3748;
   margin-bottom: var(--spacing-xs);
 }
 
 .item-price {
-  color: var(--text-secondary);
+  color: #4a5568;
   font-size: var(--font-size-base);
 }
 
@@ -480,27 +518,31 @@ async function finalizarCompra() {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  background: var(--bg-secondary);
+  background: #f8fafc;
   border-radius: var(--border-radius);
   padding: var(--spacing-xs);
+  border: 1px solid #e2e8f0;
 }
 
 .quantity-btn {
   width: 32px;
   height: 32px;
   border: none;
-  background: var(--bg-primary);
+  background: white;
   border-radius: var(--border-radius);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
 }
 
 .quantity-btn:hover:not(:disabled) {
-  background: var(--primary-color);
-  color: var(--text-light);
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  transform: scale(1.05);
 }
 
 .quantity-btn:disabled {
@@ -517,7 +559,7 @@ async function finalizarCompra() {
   min-width: 40px;
   text-align: center;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #2d3748;
 }
 
 .item-total {
@@ -529,13 +571,13 @@ async function finalizarCompra() {
 
 .total-label {
   font-size: var(--font-size-sm);
-  color: var(--text-muted);
+  color: #718096;
 }
 
 .total-amount {
   font-size: var(--font-size-lg);
   font-weight: 700;
-  color: var(--primary-color);
+  color: #667eea;
 }
 
 .remove-btn {
@@ -544,16 +586,19 @@ async function finalizarCompra() {
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-md);
   background: transparent;
-  border: 1px solid var(--error-color);
+  border: 2px solid #e53e3e;
   border-radius: var(--border-radius);
-  color: var(--error-color);
+  color: #e53e3e;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .remove-btn:hover {
-  background: var(--error-color);
-  color: var(--text-light);
+  background: #e53e3e;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
 }
 
 .remove-icon {
@@ -567,21 +612,23 @@ async function finalizarCompra() {
 }
 
 .summary-card {
-  background: var(--bg-primary);
+  background: white;
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  border: 1px solid #e2e8f0;
 }
 
 .summary-header {
   padding: var(--spacing-lg);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .summary-header h3 {
   margin: 0;
-  color: var(--text-primary);
+  color: #2d3748;
+  font-weight: 600;
 }
 
 .summary-content {
@@ -593,6 +640,7 @@ async function finalizarCompra() {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-md);
+  color: #4a5568;
 }
 
 .summary-row:last-child {
@@ -600,53 +648,68 @@ async function finalizarCompra() {
 }
 
 .summary-label {
-  color: var(--text-secondary);
+  color: #4a5568;
   font-size: var(--font-size-base);
 }
 
 .summary-value {
   font-weight: 600;
-  color: var(--text-primary);
+  color: #2d3748;
 }
 
 .summary-divider {
   height: 1px;
-  background: var(--border-color);
+  background: #e2e8f0;
   margin: var(--spacing-lg) 0;
 }
 
 .summary-row.total {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
+  border-top: 2px solid #e2e8f0;
 }
 
 .summary-row.total .summary-value {
   font-size: var(--font-size-xl);
-  color: var(--primary-color);
+  color: #667eea;
+  font-weight: 700;
 }
 
 .summary-actions {
   padding: var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  background: #f8fafc;
 }
 
 .checkout-btn {
   width: 100%;
   justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+  font-weight: 600;
+}
+
+.checkout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
 .continue-shopping {
   width: 100%;
   justify-content: center;
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
 }
 
-.btn-icon {
-  width: 18px;
-  height: 18px;
+.continue-shopping:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-1px);
 }
 
 /* Responsive */
@@ -688,5 +751,50 @@ async function finalizarCompra() {
     flex: 1;
     justify-content: center;
   }
+}
+
+/* Animaciones */
+.cart-item {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estados de hover mejorados */
+.btn:focus,
+.cart-item:focus,
+.remove-btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Mejoras de accesibilidad */
+.quantity-btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Indicadores visuales */
+.summary-card {
+  position: relative;
+}
+
+.summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 </style>
