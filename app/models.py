@@ -63,4 +63,4 @@ class DetalleVenta(Base):
     cantidad = Column(Integer)
     precio_unitario = Column(DECIMAL(10, 2))
 
-#prueba de git push prueba 
+#prueba de git push
