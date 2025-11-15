@@ -62,5 +62,3 @@ class DetalleVenta(Base):
     producto_id = Column(Integer, ForeignKey("productos.id"))
     cantidad = Column(Integer)
     precio_unitario = Column(DECIMAL(10, 2))
-
-#prueba de git push
